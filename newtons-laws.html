@@ -413,7 +413,7 @@
             flex-direction: column;
             align-items: center;
             transform-origin: top center;
-            transition: transform 0.5s ease-in-out;
+            transition: transform 0.7s cubic-bezier(0.42, 0, 0.58, 1);
         }
 
         .string {
@@ -946,112 +946,76 @@
 
         function startContinuousSwing(numBalls, startLeft) {
             cradleSwinging = true;
-            let swingLeft = startLeft;
+            let currentSide = startLeft ? 'left' : 'right'; // Track which side is active
+            const swingDuration = 700;
             
             function doSwing() {
                 if (!cradleSwinging) return;
                 
-                // Determine which balls to swing
-                const leftBalls = swingLeft ? Array.from({length: numBalls}, (_, i) => i + 1) : [];
-                const rightBalls = swingLeft ? [] : Array.from({length: numBalls}, (_, i) => 5 - i);
+                const isLeft = currentSide === 'left';
                 
-                const activeBalls = swingLeft ? leftBalls : rightBalls;
-                const oppositeBalls = swingLeft ? rightBalls : leftBalls;
+                // Determine which balls are swinging IN (toward center)
+                const swingingInBalls = isLeft ? 
+                    Array.from({length: numBalls}, (_, i) => i + 1) : 
+                    Array.from({length: numBalls}, (_, i) => 5 - i);
                 
-                // Swing active balls to center
-                activeBalls.forEach(ballNum => {
+                // Determine opposite side balls (will swing BACK then IN next)
+                const oppositeBalls = isLeft ? 
+                    Array.from({length: numBalls}, (_, i) => 5 - i) : 
+                    Array.from({length: numBalls}, (_, i) => i + 1);
+                
+                // STEP 1: Swinging balls move IN and STOP at center
+                swingingInBalls.forEach(ballNum => {
                     const container = document.querySelector(`[data-ball="${ballNum}"]`);
                     if (container) {
-                        container.style.transition = 'transform 0.5s ease-in-out';
+                        container.style.transition = `transform ${swingDuration}ms cubic-bezier(0.42, 0, 0.58, 1)`;
                         container.style.transform = 'rotate(0deg)';
                     }
                 });
                 
-                // After reaching center, swing opposite balls
+                // STEP 2: After hitting center, opposite balls swing BACK (away from center)
                 setTimeout(() => {
                     if (!cradleSwinging) return;
                     
-                    const oppBalls = swingLeft ? 
-                        Array.from({length: numBalls}, (_, i) => 5 - i) : 
-                        Array.from({length: numBalls}, (_, i) => i + 1);
-                    
-                    oppBalls.forEach(ballNum => {
+                    oppositeBalls.forEach(ballNum => {
                         const container = document.querySelector(`[data-ball="${ballNum}"]`);
                         if (container) {
-                            container.style.transition = 'transform 0.5s ease-in-out';
-                            container.style.transform = `rotate(${swingLeft ? 45 : -45}deg)`;
+                            container.style.transition = `transform ${swingDuration * 0.8}ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
+                            container.style.transform = `rotate(${isLeft ? 50 : -50}deg)`;
                         }
                     });
                     
-                    // After opposite balls reach peak, swing back
+                    // STEP 3: Switch sides - now opposite side becomes active
+                    currentSide = isLeft ? 'right' : 'left';
+                    
+                    // Continue the cycle
                     setTimeout(() => {
-                        if (!cradleSwinging) return;
-                        
-                        oppBalls.forEach(ballNum => {
-                            const container = document.querySelector(`[data-ball="${ballNum}"]`);
-                            if (container) {
-                                container.style.transform = 'rotate(0deg)';
-                            }
-                        });
-                        
-                        // After returning to center, swing original balls again
-                        setTimeout(() => {
-                            if (!cradleSwinging) return;
-                            
-                            activeBalls.forEach(ballNum => {
-                                const container = document.querySelector(`[data-ball="${ballNum}"]`);
-                                if (container) {
-                                    container.style.transform = `rotate(${swingLeft ? -45 : 45}deg)`;
-                                }
-                            });
-                            
-                            // Switch direction for next cycle
-                            swingLeft = !swingLeft;
-                            
-                            // Continue the cycle
-                            setTimeout(() => {
-                                if (cradleSwinging) {
-                                    doSwing();
-                                }
-                            }, 500);
-                        }, 500);
-                    }, 500);
-                }, 500);
+                        if (cradleSwinging) {
+                            doSwing();
+                        }
+                    }, swingDuration * 0.8);
+                }, swingDuration);
             }
             
-            // Start first swing from current position
-            const ballsToSwing = startLeft ? 
+            // INITIAL: Dragged balls start by swinging BACK first
+            const initialBalls = startLeft ? 
                 Array.from({length: numBalls}, (_, i) => i + 1) : 
                 Array.from({length: numBalls}, (_, i) => 5 - i);
             
-            ballsToSwing.forEach(ballNum => {
+            // Swing back first (like pulling them away)
+            initialBalls.forEach(ballNum => {
                 const container = document.querySelector(`[data-ball="${ballNum}"]`);
                 if (container) {
-                    container.style.transition = 'transform 0.5s ease-in-out';
-                    container.style.transform = 'rotate(0deg)';
+                    container.style.transition = `transform ${swingDuration}ms cubic-bezier(0.25, 0.1, 0.25, 1)`;
+                    container.style.transform = `rotate(${startLeft ? -50 : 50}deg)`;
                 }
             });
             
+            // Then start the cycle (swing forward to center)
             setTimeout(() => {
                 if (!cradleSwinging) return;
-                
-                const oppositeBalls = startLeft ? 
-                    Array.from({length: numBalls}, (_, i) => 5 - i) : 
-                    Array.from({length: numBalls}, (_, i) => i + 1);
-                
-                oppositeBalls.forEach(ballNum => {
-                    const container = document.querySelector(`[data-ball="${ballNum}"]`);
-                    if (container) {
-                        container.style.transition = 'transform 0.5s ease-in-out';
-                        container.style.transform = `rotate(${startLeft ? 45 : -45}deg)`;
-                    }
-                });
-                
-                setTimeout(() => {
-                    if (!cradleSwinging) return;
-                    doSwing();
-                }, 500);
-            }, 500);
+                doSwing();
+            }, swingDuration);
         }
 
         function resetCradle() {
